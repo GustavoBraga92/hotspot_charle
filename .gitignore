@@ -1,0 +1,19 @@
+# Ambiente virtual
+backend/venv/
+
+# Banco de dados (gerado automaticamente)
+backend/leads.db
+
+# Variáveis de ambiente (contém senhas)
+backend/.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS
+.DS_Store
+
+# Arquivos de teste local
+hotspot/login_test.html

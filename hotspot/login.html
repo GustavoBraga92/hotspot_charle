@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="pragma" content="no-cache" />
+    <meta http-equiv="expires" content="-1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clube Charle — Wi-Fi</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <!-- Formulário oculto que autentica no MikroTik após o cadastro -->
+    $(if chap-id)
+    <form name="sendin" action="$(link-login-only)" method="post" style="display:none">
+        <input type="hidden" name="username" />
+        <input type="hidden" name="password" />
+        <input type="hidden" name="dst" value="$(link-orig)" />
+        <input type="hidden" name="popup" value="true" />
+    </form>
+    <script src="/md5.js"></script>
+    <script>
+        function submitMikrotik(user, pass) {
+            document.sendin.username.value = user;
+            document.sendin.password.value = hexMD5('$(chap-id)' + pass + '$(chap-challenge)');
+            document.sendin.submit();
+        }
+    </script>
+    $(else)
+    <form name="sendin" action="$(link-login-only)" method="post" style="display:none">
+        <input type="hidden" name="username" />
+        <input type="hidden" name="password" />
+        <input type="hidden" name="dst" value="$(link-orig)" />
+        <input type="hidden" name="popup" value="true" />
+    </form>
+    <script>
+        function submitMikrotik(user, pass) {
+            document.sendin.username.value = user;
+            document.sendin.password.value = pass;
+            document.sendin.submit();
+        }
+    </script>
+    $(endif)
+
+    <div class="bg-overlay"></div>
+
+    <div class="ie-fixMinHeight">
+        <div class="main">
+            <div class="wrap animated fadeIn">
+
+                <div class="card">
+                    <div class="card-header">
+                        <img class="logo" src="img/logo.png" alt="Clube Charle" />
+                        <h1>Bem-vindo ao Wi-Fi do</h1>
+                        <p class="event-name">Clube Albert Scharlé</p>
+                    </div>
+
+                    <!-- Mensagem de erro do MikroTik (se houver) -->
+                    $(if error)
+                    <p class="info alert">$(error)</p>
+                    $(endif)
+
+                    <!-- Etapa 1: Cadastro -->
+                    <div id="etapa-cadastro">
+                        <p class="form-desc">Preencha seus dados para acessar a internet gratuitamente.</p>
+
+                        <div id="msg-erro" class="info alert" style="display:none"></div>
+
+                        <label class="field-label">
+                            <img class="ico" src="img/user.svg" alt="" />
+                            <input id="f-nome" type="text" placeholder="Nome completo" autocomplete="name" />
+                        </label>
+
+                        <label class="field-label">
+                            <span class="ico-text">CPF</span>
+                            <input id="f-cpf" type="text" placeholder="000.000.000-00" autocomplete="off" maxlength="14" inputmode="numeric" />
+                        </label>
+
+                        <label class="field-label">
+                            <span class="ico-text">@</span>
+                            <input id="f-email" type="email" placeholder="seu@email.com" autocomplete="email" />
+                        </label>
+
+                        <label class="field-label">
+                            <span class="ico-text ico-text--phone">📞</span>
+                            <input id="f-tel" type="tel" placeholder="(11) 99999-9999" autocomplete="tel" maxlength="15" inputmode="numeric" />
+                        </label>
+
+                        <label class="lgpd-label">
+                            <input type="checkbox" id="lgpd" />
+                            <span class="lgpd-text">
+                                Ao utilizar esta rede você concorda com os
+                                <a href="termos.html" target="_blank">termos de uso e política de privacidade</a>.
+                            </span>
+                        </label>
+
+                        <button id="btn-conectar" type="button" onclick="conectar()">Conectar</button>
+                    </div>
+
+                    <!-- Etapa 2: Carregando -->
+                    <div id="etapa-loading" style="display:none">
+                        <div class="loading-box">
+                            <div class="spinner"></div>
+                            <p class="loading-text">Criando seu acesso...</p>
+                        </div>
+                    </div>
+
+                    <!-- Etapa 3: Sucesso -->
+                    <div id="etapa-sucesso" style="display:none">
+                        <div class="sucesso-box">
+                            <div class="check-icon">✓</div>
+                            <p class="sucesso-text">Cadastro realizado!<br>Conectando...</p>
+                        </div>
+                    </div>
+
+                    <p class="powered">Powered by MikroTik RouterOS</p>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // URL da sua API — altere para o IP/domínio do servidor onde o backend está rodando
+        var API_URL = 'http://192.168.99.18:8000/api/register';
+
+        // MAC do dispositivo injetado pelo MikroTik
+        var DEVICE_MAC = '$(mac)';
+
+        // Máscara CPF
+        document.getElementById('f-cpf').addEventListener('input', function (e) {
+            var v = e.target.value.replace(/\D/g, '').slice(0, 11);
+            if (v.length > 9) v = v.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+            else if (v.length > 6) v = v.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+            else if (v.length > 3) v = v.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+            e.target.value = v;
+        });
+
+        // Máscara Telefone
+        document.getElementById('f-tel').addEventListener('input', function (e) {
+            var v = e.target.value.replace(/\D/g, '').slice(0, 11);
+            if (v.length > 10) v = v.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+            else if (v.length > 6) v = v.replace(/(\d{2})(\d{4,5})(\d{0,4})/, '($1) $2-$3');
+            else if (v.length > 2) v = v.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+            e.target.value = v;
+        });
+
+        function cpfValido(cpf) {
+            var d = cpf.replace(/\D/g, '');
+            if (d.length !== 11 || /^(\d)\1+$/.test(d)) return false;
+            for (var i = 0, t = [9, 10]; i < 2; i++) {
+                var s = 0;
+                for (var j = 0; j < t[i]; j++) s += parseInt(d[j]) * (t[i] + 1 - j);
+                if (parseInt(d[t[i]]) !== (s * 10 % 11) % 10) return false;
+            }
+            return true;
+        }
+
+        function mostrarErro(msg) {
+            var el = document.getElementById('msg-erro');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        function conectar() {
+            var nome = document.getElementById('f-nome').value.trim();
+            var cpf = document.getElementById('f-cpf').value.trim();
+            var email = document.getElementById('f-email').value.trim();
+            var tel = document.getElementById('f-tel').value.trim();
+            var lgpd = document.getElementById('lgpd').checked;
+
+            document.getElementById('msg-erro').style.display = 'none';
+
+            if (!nome || nome.length < 3) return mostrarErro('Digite seu nome completo.');
+            if (!cpfValido(cpf)) return mostrarErro('CPF inválido. Verifique os números digitados.');
+            if (!email.includes('@')) return mostrarErro('Digite um e-mail válido.');
+            if (tel.replace(/\D/g, '').length < 10) return mostrarErro('Telefone inválido. Inclua o DDD.');
+            if (!lgpd) return mostrarErro('Você precisa aceitar os termos para continuar.');
+
+            document.getElementById('etapa-cadastro').style.display = 'none';
+            document.getElementById('etapa-loading').style.display = 'block';
+
+            fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    nome: nome,
+                    cpf: cpf,
+                    email: email,
+                    telefone: tel,
+                    mac: DEVICE_MAC || null
+                })
+            })
+            .then(function (res) {
+                return res.json().then(function (data) {
+                    if (!res.ok) throw new Error(data.detail || 'Erro no servidor.');
+                    return data;
+                });
+            })
+            .then(function (data) {
+                document.getElementById('etapa-loading').style.display = 'none';
+                document.getElementById('etapa-sucesso').style.display = 'block';
+                setTimeout(function () {
+                    submitMikrotik(data.username, data.password);
+                }, 1200);
+            })
+            .catch(function (err) {
+                document.getElementById('etapa-loading').style.display = 'none';
+                document.getElementById('etapa-cadastro').style.display = 'block';
+                mostrarErro('Erro ao conectar: ' + err.message);
+            });
+        }
+    </script>
+
+</body>
+</html>
