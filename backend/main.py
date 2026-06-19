@@ -1,10 +1,12 @@
 import os
 import re
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi.security.api_key import APIKeyHeader
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
@@ -15,6 +17,16 @@ from database import init_db, get_session, Lead
 from mikrotik import criar_usuario_hotspot
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+API_KEY = os.getenv("API_KEY", "")
+
+api_key_header = APIKeyHeader(name="X-API-Key", auto_error=False)
+
+
+def verificar_api_key(key: str = Security(api_key_header)):
+    if not API_KEY:
+        raise HTTPException(status_code=500, detail="API_KEY não configurada no servidor")
+    if not key or not secrets.compare_digest(key, API_KEY):
+        raise HTTPException(status_code=403, detail="API Key inválida ou ausente")
 
 
 @asynccontextmanager
@@ -114,7 +126,7 @@ def registrar(payload: RegistroInput, db: Session = Depends(get_session)):
 
 
 @app.get("/api/leads")
-def listar_leads(db: Session = Depends(get_session)):
+def listar_leads(db: Session = Depends(get_session), _=Security(verificar_api_key)):
     leads = db.query(Lead).order_by(Lead.criado_em.desc()).all()
     return [
         {
