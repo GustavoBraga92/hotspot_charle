@@ -31,6 +31,7 @@ def criar_usuario_hotspot(cpf: str, nome: str, mac: str | None = None) -> dict:
     """
     Cria ou atualiza usuário no hotspot do MikroTik.
     Username = CPF (apenas dígitos). Retorna {'username': ..., 'password': ...}.
+    MAC não é vinculado ao usuário — qualquer dispositivo pode logar com o CPF.
     """
     username = "".join(filter(str.isdigit, cpf))
     password = _gerar_senha()
@@ -50,8 +51,6 @@ def criar_usuario_hotspot(cpf: str, nome: str, mac: str | None = None) -> dict:
             "profile": HOTSPOT_PROFILE,
             "comment": nome,
         }
-        if mac:
-            params["mac-address"] = mac
         if SESSION_TIMEOUT and SESSION_TIMEOUT != "0":
             params["limit-uptime"] = SESSION_TIMEOUT
         hotspot_users.add(**params)
